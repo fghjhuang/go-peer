@@ -24,10 +24,11 @@ func (b *Bridge) CreateBridgeServer() {
 		return
 	}
 	fmt.Println("start udp hole server")
-	udpBridge(b.Port)
+	go udpBridge(b.Port)
+	go createSignalServer()
 }
 
-/*--------------------------------------------------分割线---------------------------------------------------------------*/
+/*--------------------------------------------------分割线 udp打洞------------------------------------------------------*/
 var udpHoleList map[string]string
 
 // udp 穿透
@@ -84,7 +85,7 @@ func udpBridge(port int) {
 	}
 }
 
-/*--------------------------------------------------分割线---------------------------------------------------------------*/
+/*--------------------------------------------------分割线 websocket信令交互---------------------------------------------*/
 var addr = flag.String("addr", ":8698", "http service address")
 
 //默认先不认证
@@ -127,7 +128,7 @@ func signal(w http.ResponseWriter, r *http.Request) {
 /*
 * 创建信令服务
  */
-func (b *Bridge) CreateSignalServer() {
+func createSignalServer() {
 	flag.Parse()
 	log.SetFlags(0)
 	http.HandleFunc("/signal", signal)
