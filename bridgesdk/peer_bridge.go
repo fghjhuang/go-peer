@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"gopeer/beans"
+	"gopeer/global"
 	"log"
 	"net"
 	"net/http"
@@ -16,7 +16,7 @@ type Bridge struct {
 }
 
 /*
-* 创建中转服务
+* 创建穿透服务
  */
 
 func (b *Bridge) CreateBridgeServer() {
@@ -26,6 +26,7 @@ func (b *Bridge) CreateBridgeServer() {
 	fmt.Println("start udp hole server")
 	go udpBridge(b.Port)
 	go createSignalServer()
+	go createHttpServer()
 }
 
 /*--------------------------------------------------分割线 udp打洞------------------------------------------------------*/
@@ -46,7 +47,7 @@ func udpBridge(port int) {
 	// 监听服务器的udp端口
 	conn, _ := net.ListenUDP("udp", udpserverAddr)
 	buffer := make([]byte, 128)
-	peerRequest := beans.PeerSignal{}
+	peerRequest := global.PeerSignal{}
 	for {
 		bytesRead, remoteAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -61,11 +62,11 @@ func udpBridge(port int) {
 		}
 
 		switch peerRequest.Type {
-		case beans.REGISTER: //注册
+		case global.REGISTER: //注册
 			udpHoleList[peerRequest.DID] = remoteAddr.String()
 			break
 
-		case beans.CONNECT: //连接
+		case global.CONNECT: //连接
 			_, ok := udpHoleList[peerRequest.TarDID]
 			if ok {
 				udpHoleList[peerRequest.DID] = remoteAddr.String()
@@ -86,14 +87,17 @@ func udpBridge(port int) {
 }
 
 /*--------------------------------------------------分割线 websocket信令交互---------------------------------------------*/
-var addr = flag.String("addr", ":8698", "http service address")
+
+var addr = flag.String("addr", ":8955", "ws service address")
 
 //默认先不认证
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		auth := r.Header.Get("Authorization")
 		username := r.Header.Get("username")
-		if auth != "" && username != "" {
+		password := r.Header.Get("password")
+		if auth != "" && username != "" && password != "" {
+			// TODO 这里做认证
 			return true
 		} else {
 			return true
@@ -103,21 +107,36 @@ var upgrader = websocket.Upgrader{
 } // use default options
 
 func signal(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
 		return
 	}
 
-	defer c.Close()
+	defer func() {
+		conn.Close()
+		putWsBuffer(WebsocketObject{
+			opcode: 2,
+			did:    r.PostForm.Get("did"),
+			conn:   conn,
+		})
+	}()
+
+	//注册连接
+	putWsBuffer(WebsocketObject{
+		opcode: 1,
+		did:    r.PostForm.Get("did"),
+		conn:   conn,
+	})
+
 	for {
-		mt, message, err := c.ReadMessage()
+		mt, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
 			break
 		}
 		log.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, message)
+		err = conn.WriteMessage(mt, message)
 		if err != nil {
 			log.Println("write:", err)
 			break

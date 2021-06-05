@@ -1,7 +1,7 @@
 # go-peer
 an golang p2p connection application
 因为现在在一家IPCAM公司就职，发现原来大部分公司都是用外面的方案公司提供的P2P库，鉴于研究精神，所以打算自己研究一下P2P
-
+鉴于各种知识产权，前期先使用CC协议开源，后续项目稳定了再考虑Apache或者MIT协议
 欢迎更多贡献者一起做这个项目
 
 待办事项
@@ -47,6 +47,6 @@ an golang p2p connection application
 
 
 ## 客户端
-客户端默认通过http到云端进行信令交换，可选ws/udp
+客户端默认通过ws到云端进行信令交换，可选ws/udp
 * udp方式存在可靠性问题
 * ws不存在可靠性问题，并且ws一旦p2p建立成功后会自动断开

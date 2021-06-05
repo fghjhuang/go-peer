@@ -2,7 +2,7 @@ package clientsdk
 
 import (
 	"fmt"
-	"gopeer/beans"
+	"gopeer/global"
 	"net"
 	"os"
 	"strings"
@@ -33,7 +33,7 @@ func register() {
 	local, _ := net.ResolveUDPAddr("udp", localAddress)
 	conn, _ := net.ListenUDP("udp", local)
 
-	registerinfo := beans.PeerSignal{
+	registerinfo := global.PeerSignal{
 		DID:    os.Args[4],
 		Type:   "connect",
 		TarDID: os.Args[5],
