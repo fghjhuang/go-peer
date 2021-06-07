@@ -16,6 +16,7 @@ an golang p2p connection application
 - [ ] 更多的硬件支持
 
 ## 架构
+![img.png](img.png)
 ```
 
    ————————————————————————云端————————————————————————
@@ -41,7 +42,7 @@ an golang p2p connection application
 ## 服务端
 服务端默认通过ws到云端进行信令交换，信令交换方式都是可选择的，ws/udp
 * ws方式支持http查询在线状态
-* udp方式不支持
+* udp方式不支持http查询在线状态
 * 后续还可以选择mqtt方式进行信令交换
 
 
@@ -50,3 +51,7 @@ an golang p2p connection application
 客户端默认通过ws到云端进行信令交换，可选ws/udp
 * udp方式存在可靠性问题
 * ws不存在可靠性问题，并且ws一旦p2p建立成功后会自动断开
+
+
+
+

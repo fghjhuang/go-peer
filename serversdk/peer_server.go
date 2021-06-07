@@ -1,6 +1,7 @@
 package serversdk
 
 import (
+	"flag"
 	"fmt"
 	"gopeer/global"
 	"net"
@@ -37,6 +38,9 @@ func register() {
 	remote, _ := net.ResolveUDPAddr("udp", signalAddress)
 	local, _ := net.ResolveUDPAddr("udp", localAddress)
 	conn, _ := net.ListenUDP("udp", local)
+
+	//ws连接信令服务器
+	var singaladdr = flag.String("addr", signalAddress, "ws service address")
 
 	registerinfo := global.PeerSignal{
 		DID:  os.Args[4],

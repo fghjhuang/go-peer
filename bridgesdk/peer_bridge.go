@@ -48,6 +48,7 @@ func udpBridge(port int) {
 	conn, _ := net.ListenUDP("udp", udpserverAddr)
 	buffer := make([]byte, 128)
 	peerRequest := global.PeerSignal{}
+
 	for {
 		bytesRead, remoteAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -66,21 +67,22 @@ func udpBridge(port int) {
 			udpHoleList[peerRequest.DID] = remoteAddr.String()
 			break
 
-		case global.CONNECT: //连接
-			_, ok := udpHoleList[peerRequest.TarDID]
-			if ok {
-				udpHoleList[peerRequest.DID] = remoteAddr.String()
-				// 通知目标设备本地址
-				r, _ := net.ResolveUDPAddr("udp", udpHoleList[peerRequest.TarDID])
-				conn.WriteTo([]byte(remoteAddr.String()), r)
-				fmt.Printf("[INFO] Responded to %s with %s\n", udpHoleList[peerRequest.TarDID], string(remoteAddr.String()))
+		case global.CONNECT: //客户端请求连接服务端
+			//ws转发到服务端
+			m.RLock()
+			value, ok := wsBuffer[peerRequest.TarDID]
+			m.RUnlock()
 
-				//通知本设备目标设备地址
-				r, _ = net.ResolveUDPAddr("udp", udpHoleList[peerRequest.DID])
-				conn.WriteTo([]byte(udpHoleList[peerRequest.TarDID]), r)
-				fmt.Printf("[INFO] Responded to %s with %s\n", udpHoleList[peerRequest.DID], string(udpHoleList[peerRequest.TarDID]))
+			if ok {
+				peerRequest.DIDIP = remoteAddr.String() //加上端口信息转发
+				data, err := json.Marshal(peerRequest)
+				err = value.WriteMessage(websocket.TextMessage, data)
+				if err != nil {
+					fmt.Println("write error")
+				}
 			}
 			break
+
 		}
 
 	}
@@ -113,11 +115,17 @@ func signal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	did := r.PostForm.Get("did")
+
+	if did == "" {
+		return
+	}
+
 	defer func() {
 		conn.Close()
 		putWsBuffer(WebsocketObject{
 			opcode: 2,
-			did:    r.PostForm.Get("did"),
+			did:    did,
 			conn:   conn,
 		})
 	}()
@@ -125,7 +133,7 @@ func signal(w http.ResponseWriter, r *http.Request) {
 	//注册连接
 	putWsBuffer(WebsocketObject{
 		opcode: 1,
-		did:    r.PostForm.Get("did"),
+		did:    did,
 		conn:   conn,
 	})
 

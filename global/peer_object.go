@@ -9,6 +9,7 @@ const (
 
 type PeerSignal struct {
 	DID    string `json:"did"`
+	DIDIP  string `json:"didip"`
 	Type   string `json:"type"`
 	TarDID string `json:"tar_did"`
 }
