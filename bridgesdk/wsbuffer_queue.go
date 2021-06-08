@@ -1,6 +1,7 @@
 package bridgesdk
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"sync"
 )
@@ -46,9 +47,11 @@ func readWSThread() {
 				switch poll.opcode {
 				case 1: // add
 					wsBuffer[poll.did] = poll.conn // 分配缓存空间
+					fmt.Println("register device:" + poll.did)
 					break
 				case 2: // delete
 					delete(wsBuffer, poll.did)
+					fmt.Println("delete device:" + poll.did)
 					break
 				}
 				m.Unlock()

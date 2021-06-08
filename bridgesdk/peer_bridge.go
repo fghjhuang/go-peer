@@ -55,18 +55,38 @@ func udpBridge(port int) {
 			panic(err)
 		}
 		incoming := string(buffer[0:bytesRead])
-		fmt.Println("[INCOMING]", incoming)
+		fmt.Println("[udp INCOMING]", incoming, "from ip:port is ", remoteAddr.String())
 		err = json.Unmarshal([]byte(incoming), &peerRequest)
 		if err != nil {
 			fmt.Println("analyse data error", err.Error())
 			continue
 		}
 
+		_, _ = conn.WriteTo([]byte("udp"), remoteAddr)
+
 		switch peerRequest.Type {
 		case global.REGISTER: //注册
 			udpHoleList[peerRequest.DID] = remoteAddr.String()
 			break
 
+		case global.FEEDBACK:
+			//ws转发到服务端
+			m.RLock()
+			value, ok := wsBuffer[peerRequest.TarDID]
+			m.RUnlock()
+
+			if ok {
+				fmt.Println("find tar device: " + peerRequest.TarDID)
+				peerRequest.DIDIP = remoteAddr.String() //加上端口信息转发
+				data, err := json.Marshal(peerRequest)
+				err = value.WriteMessage(websocket.TextMessage, data)
+				if err != nil {
+					fmt.Println("write error")
+				}
+			} else {
+				fmt.Println("not find device: " + peerRequest.TarDID)
+			}
+			break
 		case global.CONNECT: //客户端请求连接服务端
 			//ws转发到服务端
 			m.RLock()
@@ -74,12 +94,15 @@ func udpBridge(port int) {
 			m.RUnlock()
 
 			if ok {
+				fmt.Println("find tar device: " + peerRequest.TarDID)
 				peerRequest.DIDIP = remoteAddr.String() //加上端口信息转发
 				data, err := json.Marshal(peerRequest)
 				err = value.WriteMessage(websocket.TextMessage, data)
 				if err != nil {
 					fmt.Println("write error")
 				}
+			} else {
+				fmt.Println("not find device: " + peerRequest.TarDID)
 			}
 			break
 
@@ -90,7 +113,7 @@ func udpBridge(port int) {
 
 /*--------------------------------------------------分割线 websocket信令交互---------------------------------------------*/
 
-var addr = flag.String("addr", ":8955", "ws service address")
+var addr = flag.String("addr", ":12501", "ws service address")
 
 //默认先不认证
 var upgrader = websocket.Upgrader{
@@ -114,10 +137,12 @@ func signal(w http.ResponseWriter, r *http.Request) {
 		log.Print("upgrade:", err)
 		return
 	}
+	fmt.Println("[new ws connection]")
 
-	did := r.PostForm.Get("did")
+	did := r.Header.Get("did")
 
 	if did == "" {
+		fmt.Println("new connection not find did info, will be return")
 		return
 	}
 

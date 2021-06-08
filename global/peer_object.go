@@ -5,6 +5,7 @@ import "encoding/json"
 const (
 	REGISTER = "register"
 	CONNECT  = "connect"
+	FEEDBACK = "feedback"
 )
 
 type PeerSignal struct {
